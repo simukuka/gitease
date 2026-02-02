@@ -9,7 +9,7 @@ import { getCopilotSuggestion, isCopilotAvailable } from './copilot.js';
 import { analyzeCommand, isReversible } from './safety.js';
 import { addLedgerEntry, getLedger, getLastCommand } from './ledger.js';
 import { MESSAGES } from './constants.js';
-import { RiskLevel } from './types.js';
+import { RiskLevel, CopilotSuggestion } from './types.js';
 import { printSuccess, printError, printWarning, printCommand, printRiskBadge, Spinner } from './ui.js';
 
 const program = new Command();
@@ -94,7 +94,7 @@ program
       printSuccess(MESSAGES.available);
 
     // Get suggestion from Copilot
-    let suggestion;
+    let suggestion: CopilotSuggestion;
     try {
       const spinner = new Spinner('Asking Copilot for suggestions...');
       spinner.start();

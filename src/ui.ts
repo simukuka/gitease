@@ -19,7 +19,7 @@ export function printSuccess(message: string): void {
 }
 
 export function printError(message: string): void {
-  console.log(chalk.red(`❌ ${message}`));
+  console.log(chalk.red(`${message}`));
 }
 
 export function printWarning(message: string): void {
