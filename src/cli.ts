@@ -52,12 +52,12 @@ program
   .command('status')
   .description('Show detailed Git repository status')
   .action(async () => {
-    console.log(chalk.blue('🔍 Checking repository...\n'));
+    console.log(chalk.blue('Checking repository...\n'));
     
     // Check if Git repo
     const isRepo = await isGitRepository();
     if (!isRepo) {
-      console.log(chalk.red('❌ Not a Git repository'));
+      console.log(chalk.red('Not a Git repository'));
       process.exit(1);
     }
 
