@@ -110,7 +110,9 @@ program
 
     console.log(chalk.green('\n✨ Copilot suggests:\n'));
     printCommand(suggestion.command);
-    console.log(chalk.gray(`   ${suggestion.explanation}\n`));
+    if (process.env.DEBUG) {
+      console.log(chalk.gray(`   ${suggestion.explanation}\n`));
+    }
 
     if (!suggestion.command || suggestion.command === 'No command suggested' || !suggestion.command.trim().startsWith('git ')) {
       printError(MESSAGES.noCommand);
