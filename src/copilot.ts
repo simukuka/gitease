@@ -6,12 +6,19 @@ import { COPILOT_PROMPT_CONSTRAINTS } from './constants.js';
 const execAsync = promisify(exec);
 
 /**
- * Get command suggestion from GitHub Copilot
+ * Get command suggestion from GitHub Copilot with timeout
  */
 export async function getCopilotSuggestion(query: string): Promise<CopilotSuggestion> {
   try {
     const prompt = [...COPILOT_PROMPT_CONSTRAINTS, `User request: ${query}`].join('\n');
-    const { stdout } = await execAsync(`gh copilot --prompt "${prompt}"`);
+    
+    // Create a promise that times out after 30 seconds
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Copilot request timed out after 30 seconds. Make sure `gh` CLI is installed and authenticated.')), 30000)
+    );
+    
+    const execPromise = execAsync(`gh copilot --prompt "${prompt}"`, { maxBuffer: 10 * 1024 * 1024 });
+    const { stdout } = await Promise.race([execPromise, timeoutPromise]);
     
     const suggestion = parseCopilotOutput(stdout);
     if (!suggestion.command || suggestion.command === 'No command suggested') {
