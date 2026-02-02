@@ -1,7 +1,7 @@
 {
-  "name": "gitease",
-  "version": "0.1.0",
-  "description": "Git commands in plain English using AI",
+  "name": "gitease-cli",
+  "version": "1.0.0",
+  "description": "Git commands in plain English, powered by GitHub Copilot AI",
   "main": "dist/index.js",
   "bin": {
     "gitease": "dist/cli.js"
@@ -9,28 +9,46 @@
   "scripts": {
     "build": "tsc && chmod +x dist/cli.js",
     "dev": "tsc --watch",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "git",
     "cli",
+    "github-copilot",
     "ai",
-    "copilot",
-    "developer-tools"
+    "developer-tools",
+    "command-line",
+    "natural-language",
+    "copilot-cli",
+    "git-helper",
+    "typescript"
   ],
-  "author": "Simukuka Akakandelwa <simukukaaka@gmail.com>",
+  "author": "simukuka <your.email@example.com> (https://github.com/simukuka)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/simukuka/gitease.git"
+  },
+  "bugs": {
+    "url": "https://github.com/simukuka/gitease/issues"
+  },
+  "homepage": "https://github.com/simukuka/gitease#readme",
   "engines": {
     "node": ">=18.0.0"
   },
-  "devDependencies": {
-    "@types/commander": "^2.12.0",
-    "@types/node": "^25.2.0",
-    "typescript": "^5.9.3"
-  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
-    "chalk": "^5.6.2",
-    "commander": "^14.0.3",
-    "simple-git": "^3.30.0"
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "simple-git": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.0"
   }
 }
