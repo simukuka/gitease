@@ -125,7 +125,7 @@ program
       }
     }
 
-    if (/^git\s+commit\s*$/.test(command)) {
+    if (/^git\s+commit/.test(command) && !/-m\s+["']/.test(command)) {
       const message = await promptInput(chalk.yellow(MESSAGES.commitMessage));
       if (!message) {
         console.log(chalk.gray(MESSAGES.cancelled));
@@ -136,19 +136,23 @@ program
     }
 
     if (command.startsWith('git commit')) {
-      const status = await getRepoStatus();
-      const hasChanges = status.modified.length > 0 || status.staged.length > 0 || status.not_added.length > 0;
-      if (!hasChanges) {
-        console.log(chalk.yellow(`\n${MESSAGES.noChanges}`));
-        return;
-      }
-      if (status.staged.length === 0) {
-        const stageAll = await promptYesNo(chalk.yellow(MESSAGES.stageAll));
-        if (!stageAll) {
-          console.log(chalk.gray(MESSAGES.cancelled));
+      const isAmend = command.includes('--amend');
+      
+      if (!isAmend) {
+        const status = await getRepoStatus();
+        const hasChanges = status.modified.length > 0 || status.staged.length > 0 || status.not_added.length > 0;
+        if (!hasChanges) {
+          console.log(chalk.yellow(`\n${MESSAGES.noChanges}`));
           return;
         }
-        await execAsync('git add -A');
+        if (status.staged.length === 0) {
+          const stageAll = await promptYesNo(chalk.yellow(MESSAGES.stageAll));
+          if (!stageAll) {
+            console.log(chalk.gray(MESSAGES.cancelled));
+            return;
+          }
+          await execAsync('git add -A');
+        }
       }
     }
 
