@@ -1,31 +1,18 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { CopilotSuggestion } from './types.js';
+import { COPILOT_PROMPT_CONSTRAINTS } from './constants.js';
 
 const execAsync = promisify(exec);
-
-/**
- * Interface for Copilot suggestion
- */
-export interface CopilotSuggestion {
-  command: string;
-  explanation: string;
-}
 
 /**
  * Get command suggestion from GitHub Copilot
  */
 export async function getCopilotSuggestion(query: string): Promise<CopilotSuggestion> {
   try {
-    // Use the new Copilot CLI syntax with --prompt flag
-    const prompt = [
-      'Return exactly one safe git command only. Do not chain commands.',
-      'Prefer the simplest command that satisfies the request.',
-      'Wrap the command in a bash code block.',
-      `User request: ${query}`
-    ].join('\n');
-    const { stdout, stderr } = await execAsync(`gh copilot --prompt "${prompt}"`);
+    const prompt = [...COPILOT_PROMPT_CONSTRAINTS, `User request: ${query}`].join('\n');
+    const { stdout } = await execAsync(`gh copilot --prompt "${prompt}"`);
     
-    // Parse the output
     const suggestion = parseCopilotOutput(stdout);
     if (!suggestion.command || suggestion.command === 'No command suggested') {
       throw new Error('Copilot did not return a command');
