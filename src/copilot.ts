@@ -17,17 +17,19 @@ export interface CopilotSuggestion {
 export async function getCopilotSuggestion(query: string): Promise<CopilotSuggestion> {
   try {
     // Use the new Copilot CLI syntax with --prompt flag
-    const { stdout, stderr } = await execAsync(`gh copilot --prompt "${query}"`);
-    
-    // DEBUG: Show what Copilot actually returns
-    console.log('\n' + '='.repeat(60));
-    console.log('DEBUG: Raw Copilot Output');
-    console.log('='.repeat(60));
-    console.log(stdout);
-    console.log('='.repeat(60) + '\n');
+    const prompt = [
+      'Return exactly one safe git command only. Do not chain commands.',
+      'Prefer the simplest command that satisfies the request.',
+      'Wrap the command in a bash code block.',
+      `User request: ${query}`
+    ].join('\n');
+    const { stdout, stderr } = await execAsync(`gh copilot --prompt "${prompt}"`);
     
     // Parse the output
     const suggestion = parseCopilotOutput(stdout);
+    if (!suggestion.command || suggestion.command === 'No command suggested') {
+      throw new Error('Copilot did not return a command');
+    }
     
     return suggestion;
   } catch (error) {
@@ -72,6 +74,14 @@ function parseCopilotOutput(output: string): CopilotSuggestion {
         command = trimmed.replace(/^sudo\s+/, '');
       } else if (!command && trimmed.length > 0) {
         command = trimmed;
+      }
+    }
+
+    // Extract inline command hints like "$ git status"
+    if (!command && !inCodeBlock) {
+      const inlineMatch = line.match(/\$\s*(git\s+[^\n`]+)/i);
+      if (inlineMatch && inlineMatch[1]) {
+        command = inlineMatch[1].trim();
       }
     }
     

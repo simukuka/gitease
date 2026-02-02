@@ -2,9 +2,39 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { isGitRepository, getCurrentBranch, getRepoStatus } from './git.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { isGitRepository, getCurrentBranch, getRepoStatus, hasCommits } from './git.js';
+import { getCopilotSuggestion, isCopilotAvailable } from './copilot.js';
 
 const program = new Command();
+const execAsync = promisify(exec);
+
+async function promptYesNo(message: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    process.stdout.write(message);
+    process.stdin.resume();
+    process.stdin.setEncoding('utf8');
+    process.stdin.once('data', (data) => {
+      const answer = String(data).trim().toLowerCase();
+      process.stdin.pause();
+      resolve(answer === 'y' || answer === 'yes');
+    });
+  });
+}
+
+async function promptInput(message: string): Promise<string> {
+  return new Promise((resolve) => {
+    process.stdout.write(message);
+    process.stdin.resume();
+    process.stdin.setEncoding('utf8');
+    process.stdin.once('data', (data) => {
+      const answer = String(data).trim();
+      process.stdin.pause();
+      resolve(answer);
+    });
+  });
+}
 
 program
   .name('gitease')
@@ -17,14 +47,11 @@ program
     // Validate input
     if (!query || query.trim().length === 0) {
       console.log(chalk.red('Error: Please provide a valid query'));
-      console.log(chalk.yellow('\nExample:'));
+      console.log(chalk.yellow('\n💡 Example:'));
       console.log(chalk.gray('  gitease "undo my last commit"'));
       process.exit(1);
     }
 
-    // Check if in a Git repository
-    console.log(chalk.blue('Checking Git repository...'));
-    
     const isRepo = await isGitRepository();
     
     if (!isRepo) {
@@ -34,16 +61,103 @@ program
     }
 
     // Get current branch
-    try {
-      const branch = await getCurrentBranch();
-      console.log(chalk.green(`Git repository detected (branch: ${branch})`));
-    } catch (error) {
-      console.log(chalk.yellow('Git repository detected (branch unknown)'));
+    const hasAnyCommits = await hasCommits();
+    if (hasAnyCommits) {
+      try {
+        const branch = await getCurrentBranch();
+        console.log(chalk.green(`Git repository detected (branch: ${branch})\n`));
+      } catch (error) {
+        console.log(chalk.green('Git repository detected\n'));
+      }
+    } else {
+      console.log(chalk.green('Git repository detected\n'));
     }
 
-    // Show what user asked
-    console.log(chalk.blue('\n You asked:'), chalk.bold(query));
-    console.log(chalk.gray('  (Next: We\'ll send this to Copilot!)'));
+    // Check if Copilot is available
+    console.log(chalk.blue('Checking GitHub Copilot...'));
+    const copilotAvailable = await isCopilotAvailable();
+    
+    if (!copilotAvailable) {
+      console.log(chalk.red('\nGitHub Copilot CLI not found'));
+      console.log(chalk.yellow('\nMake sure you\'re logged in:'));
+      console.log(chalk.gray('  run gh auth login'));
+      process.exit(1);
+    }
+    
+    console.log(chalk.green('GitHub Copilot available\n'));
+
+    // Get suggestion from Copilot
+    let suggestion;
+    try {
+      suggestion = await getCopilotSuggestion(query);
+    } catch (error) {
+      console.log(chalk.red('\n Failed to get suggestion from Copilot'));
+      if (error instanceof Error) {
+        console.log(chalk.gray('   ' + error.message));
+      }
+      return;
+    }
+
+    console.log(chalk.green('\n✨ Copilot suggests:\n'));
+    console.log(chalk.bold.cyan('  ' + suggestion.command));
+    console.log(chalk.gray('\n  ' + suggestion.explanation));
+
+    if (!suggestion.command || suggestion.command === 'No command suggested' || !suggestion.command.trim().startsWith('git ')) {
+      console.log(chalk.red('\n Copilot did not return a runnable git command.'));
+      return;
+    }
+
+    let command = suggestion.command.trim();
+
+    if (/^git\s+commit\s*$/.test(command)) {
+      const message = await promptInput(chalk.yellow('\nCommit message: '));
+      if (!message) {
+        console.log(chalk.gray('Cancelled.'));
+        return;
+      }
+      const safeMessage = message.replace(/"/g, '\\"');
+      command = `git commit -m "${safeMessage}"`;
+    }
+
+    if (command.startsWith('git commit')) {
+      const status = await getRepoStatus();
+      const hasChanges = status.modified.length > 0 || status.staged.length > 0 || status.not_added.length > 0;
+      if (!hasChanges) {
+        console.log(chalk.yellow('\nNo changes to commit.'));
+        return;
+      }
+      if (status.staged.length === 0) {
+        const stageAll = await promptYesNo(chalk.yellow('\nNo staged changes. Stage all and continue? (y/N): '));
+        if (!stageAll) {
+          console.log(chalk.gray('Cancelled.'));
+          return;
+        }
+        await execAsync('git add -A');
+      }
+    }
+
+    const shouldRun = await promptYesNo(chalk.yellow('\nRun this command? (y/N): '));
+    if (!shouldRun) {
+      console.log(chalk.gray('Cancelled.'));
+      return;
+    }
+
+    try {
+      console.log(chalk.blue('\n▶ Executing...'));
+      const { stdout, stderr } = await execAsync(command);
+      if (stdout) {
+        console.log(stdout.trim());
+      }
+      if (stderr) {
+        console.log(chalk.yellow(stderr.trim()));
+      }
+      console.log(chalk.green('\n✅ Done.'));
+    } catch (error) {
+      console.log(chalk.red('\n❌ Command failed'));
+      if (error instanceof Error) {
+        console.log(chalk.gray('   ' + error.message));
+      }
+    }
   });
 
 //'status' command
@@ -86,7 +200,7 @@ program
       }
       
     } catch (error) {
-      console.log(chalk.red('\n❌ Error getting Git information'));
+      console.log(chalk.red('\n Error getting Git information'));
       if (error instanceof Error) {
         console.log(chalk.gray('   ' + error.message));
         console.log(chalk.gray('\n   Stack trace:'));
