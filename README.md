@@ -1,110 +1,119 @@
-Gitease
-=======
+# 🪄 GitEase
 
-A safety‑first natural language Git copilot for the command line. Describe what you want to do in plain English and Gitease suggests the Git command, explains it, and asks for confirmation before running it.
+> Git commands in plain English, powered by AI
 
-Highlights
-----------
-- **Natural language → Git commands** via GitHub Copilot CLI
-- **Safety confirmations** with risk warnings
-- **Undo history** to review and reverse recent actions
-- **Polished terminal UI** with clear, readable output
+Transform complex Git operations into simple conversations. GitEase uses GitHub Copilot CLI to translate your intent into the right Git command, shows a safety preview, and asks for confirmation before running anything.
 
-Requirements
-------------
-- **Node.js 18+**
-- **Git**
-- **GitHub CLI** (`gh`) with **Copilot CLI** enabled
+[![npm version](https://img.shields.io/npm/v/gitease.svg)](https://www.npmjs.com/package/gitease)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Quick Start
------------
-1) Install dependencies
+## ✨ Features
 
-	- `npm install`
+- 🤖 **AI‑Powered**: Uses GitHub Copilot CLI for command suggestions
+- 🎯 **Natural Language**: Describe what you want in plain English
+- 🛡️ **Safety‑First**: Risk analysis + confirmation before execution
+- 🔍 **Diff Preview**: Shows relevant diffs/status for risky commands
+- 🧾 **Undo History**: Track actions and undo the last operation
+- 🎨 **Polished UI**: Clean, readable terminal output with badges/spinners
 
-2) Build
+## 🎬 Demo
+```bash
+$ gitease "undo my last commit but keep the changes"
 
-	- `npm run build`
+Git repository detected (branch: main)
+✅ GitHub Copilot available
 
-3) Run
+✨ Copilot suggests:
+  $ git reset --soft HEAD~1
 
-	- `node dist/cli.js "undo my last commit"`
+⚠️  This command can irreversibly delete or modify commits/files
+Preview:
+(diff/status preview)
 
-Or link the CLI globally (optional):
+Run this command? (y/N):
+```
 
-- `npm link`
-- `gitease "show me the repo status"`
+## 📦 Installation
 
-GitHub Copilot CLI Setup
-------------------------
-Make sure the Copilot CLI is available and authenticated:
+### Prerequisites
 
-- `gh auth login`
-- `gh copilot --help`
+- [Node.js](https://nodejs.org/) 18+
+- [GitHub CLI](https://cli.github.com/) (`gh`)
+- GitHub Copilot subscription
 
-If you see an error about models (e.g., `claude-sonnet-4.5`), run Copilot once in interactive mode to enable the model:
+### Install GitEase
+```bash
+npm install -g gitease
+```
 
-- `gh copilot --model claude-sonnet-4.5`
+### Setup GitHub Copilot
+```bash
+gh auth login
+gh copilot --help
+```
 
-Usage
------
-### Natural Language Queries
-```text
+If you see a model‑enable error (e.g., `claude-sonnet-4.5`), enable it once:
+```bash
+gh copilot --model claude-sonnet-4.5
+```
+
+## 🚀 Usage
+
+### Natural Language
+```bash
 gitease "undo my last commit"
 gitease "show me the repo status"
-gitease "create a new branch called feature/login"
+gitease "create a branch called feature/login"
 gitease "commit all changes"
 ```
 
 ### Built‑in Commands
-```text
+```bash
 gitease status
 gitease history
 gitease undo
 ```
 
-What Happens When You Run a Query
----------------------------------
-1) Gitease checks you are inside a Git repo.
-2) It asks Copilot for a **single, simple Git command**.
-3) It shows the command and a short explanation.
-4) It analyzes the risk and warns if needed.
-5) It asks for confirmation before executing.
-6) It logs the result to the undo ledger.
+## 🎯 How It Works
+```
+You type intent → GitEase validates repo → Copilot suggests a command
+→ GitEase previews + warns → you confirm → command executes → ledger updates
+```
 
-Safety Model
-------------
+## 🛡️ Safety Model
+
 Commands are grouped into:
 
-- **Safe**: typically read‑only or low‑risk
-- **Warning**: pushes, merges, rebases
+- **Safe**: read‑only or low‑risk
+- **Warning**: merges, rebases, pushes
 - **Dangerous**: hard resets, force pushes, aggressive cleanups
 
-Dangerous commands require explicit confirmation. Some operations are flagged as **not automatically reversible**.
+Risky commands show a preview (diff/status/log) before confirmation.
 
-Undo History
-------------
-Gitease records executed commands in a local ledger. You can:
+## 🧾 Undo History
 
-- View history: `gitease history`
-- Undo last operation: `gitease undo`
+Gitease stores executed commands in `~/.gitease-ledger.json`.
 
-Undo is best‑effort. For example:
+- `gitease history` → list recent commands
+- `gitease undo` → reverse the last action when possible
+
+Examples:
 - `git commit` → `git reset --soft HEAD~1`
 - `git add` → `git reset HEAD`
-- `git push` → **not automatically reversible**
+- `git push` → not automatically reversible
 
-Error Handling
---------------
-Gitease provides safe, readable error messages. For deeper diagnostics:
+## 🛠️ Development
 
-- `DEBUG=1 gitease "your request"`
+```bash
+npm install
+npm run build
+npm run dev
+```
 
-Project Structure
------------------
+### Project Structure
 ```
 src/
-  cli.ts         # CLI entry and flow
+  cli.ts         # CLI flow and prompts
   copilot.ts     # GitHub Copilot CLI integration
   git.ts         # Git helpers
   safety.ts      # Risk analysis
@@ -114,24 +123,19 @@ src/
   types.ts       # Shared types
 ```
 
-Development
------------
-- `npm run dev` → watch mode
-- `npm run build` → compile to `dist/`
-- `npm start` → run compiled CLI
+## 🧪 Debugging
 
-Notes
------
-- Copilot responses may take a few seconds (network + model latency).
-- Copilot output is constrained to a **single simple Git command**.
+```bash
+DEBUG=1 gitease "your request"
+```
 
-Roadmap Ideas
--------------
-- Better command parsing and validation
-- More undo mappings
-- Test suite for safety rules
-- Configurable risk thresholds
+## 🤝 Contributing
 
-License
--------
+1. Fork the repo
+2. Create a feature branch
+3. Commit your changes
+4. Open a PR
+
+## 📝 License
+
 MIT

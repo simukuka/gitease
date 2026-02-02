@@ -41,6 +41,54 @@ async function promptInput(message: string): Promise<string> {
   });
 }
 
+async function showRiskPreview(command: string): Promise<void> {
+  try {
+    console.log(chalk.gray('\nPreview:'));
+
+    if (command.startsWith('git commit')) {
+      const { stdout } = await execAsync('git diff --staged');
+      if (stdout) {
+        console.log(chalk.gray(stdout.trim()));
+      } else {
+        console.log(chalk.gray('(no staged changes)'));
+      }
+      return;
+    }
+
+    if (command.startsWith('git add')) {
+      const { stdout } = await execAsync('git diff');
+      if (stdout) {
+        console.log(chalk.gray(stdout.trim()));
+      } else {
+        console.log(chalk.gray('(no unstaged changes)'));
+      }
+      return;
+    }
+
+    if (command.startsWith('git checkout') || command.startsWith('git reset') || command.startsWith('git clean')) {
+      const status = await execAsync('git status -sb');
+      if (status.stdout) {
+        console.log(chalk.gray(status.stdout.trim()));
+      }
+      const diff = await execAsync('git diff');
+      if (diff.stdout) {
+        console.log(chalk.gray(diff.stdout.trim()));
+      }
+      return;
+    }
+
+    if (command.startsWith('git merge') || command.startsWith('git rebase')) {
+      const { stdout } = await execAsync('git log --oneline --decorate -n 5');
+      if (stdout) {
+        console.log(chalk.gray(stdout.trim()));
+      }
+      return;
+    }
+  } catch (error) {
+    console.log(chalk.yellow('⚠️  Unable to show preview'));
+  }
+}
+
 program
   .name('gitease')
   .description('Git commands in plain English using AI')
@@ -125,6 +173,7 @@ program
     const safety = analyzeCommand(command);
     if (safety.riskLevel !== RiskLevel.Safe) {
       console.log(printRiskBadge(safety.riskLevel.toLowerCase() as 'safe' | 'warning' | 'dangerous') + ' ' + chalk.yellow(safety.message));
+      await showRiskPreview(command);
       if (!isReversible(command)) {
         const proceed = await promptYesNo(chalk.red('\n⚠️  This operation cannot be undone. Proceed? (y/N): '));
         if (!proceed) {
