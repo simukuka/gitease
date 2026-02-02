@@ -12,18 +12,28 @@ export function analyzeCommand(command: string): SafetyAnalysis {
     if (pattern.test(trimmed)) {
       return {
         riskLevel: RiskLevel.Dangerous,
-        message: '⚠️  This command can irreversibly delete or modify commits',
+        message: 'This command can irreversibly delete or modify commits/files',
         reversible: false,
         affectedItems: extractAffectedItems(trimmed),
       };
     }
   }
 
+  // Check for force push
+  if (/git\s+push.*--force/.test(trimmed)) {
+    return {
+      riskLevel: RiskLevel.Dangerous,
+      message: 'Force push will overwrite remote history and affect other developers',
+      reversible: false,
+      affectedItems: ['remote repository'],
+    };
+  }
+
   // Check for warning-level commands
   if (/^git\s+push/.test(trimmed)) {
     return {
       riskLevel: RiskLevel.Warning,
-      message: '⚠️  This will push changes to the remote repository',
+      message: 'This will push changes to the remote repository',
       reversible: true,
       affectedItems: extractAffectedItems(trimmed),
     };
@@ -32,7 +42,16 @@ export function analyzeCommand(command: string): SafetyAnalysis {
   if (/^git\s+rebase/.test(trimmed)) {
     return {
       riskLevel: RiskLevel.Warning,
-      message: '⚠️  This will rewrite commit history',
+      message: 'This will rewrite commit history',
+      reversible: true,
+      affectedItems: extractAffectedItems(trimmed),
+    };
+  }
+
+  if (/^git\s+merge/.test(trimmed)) {
+    return {
+      riskLevel: RiskLevel.Warning,
+      message: 'This will merge branches and may cause conflicts',
       reversible: true,
       affectedItems: extractAffectedItems(trimmed),
     };
