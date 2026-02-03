@@ -156,13 +156,14 @@ You need an active GitHub Copilot subscription to use GitEase:
 ## 🚀 Quick Start
 ```bash
 # 1. Install GitEase globally
-npm install -g gitease
+npm install -g gitease-cli
 
 # 2. Authenticate with GitHub (one-time)
 gh auth login
 
-# 3. Verify Copilot access
-gh copilot --help
+# 3. Install Copilot extension and verify
+gh extension install github/gh-copilot
+gh copilot --prompt "Return just: test"
 
 # 4. Start using it!
 gitease "create a new branch called feature-login"
