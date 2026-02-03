@@ -12,9 +12,9 @@ export async function getCopilotSuggestion(query: string): Promise<CopilotSugges
   try {
     const prompt = [...COPILOT_PROMPT_CONSTRAINTS, `User request: ${query}`].join('\n');
     
-    // Create a promise that times out after 30 seconds
+    // Create a promise that times out after 60 seconds (allows for CLI download on first run)
     const timeoutPromise = new Promise<never>((_, reject) => 
-      setTimeout(() => reject(new Error('Copilot request timed out after 30 seconds. Make sure `gh` CLI is installed and authenticated.')), 30000)
+      setTimeout(() => reject(new Error('Copilot request timed out after 60 seconds. Make sure `gh` CLI is installed and authenticated.')), 60000)
     );
     
     const execPromise = execAsync(`gh copilot --prompt "${prompt}"`, { maxBuffer: 10 * 1024 * 1024 });
@@ -128,9 +128,10 @@ export async function isCopilotAvailable(): Promise<boolean> {
     await execAsync('gh copilot --help');
     
     // Then try a simple actual call to verify it works
+    // Note: First time may auto-download Copilot CLI, so use longer timeout (45 seconds)
     const testPrompt = 'Return just: "test"';
     const { stdout } = await execAsync(`gh copilot --prompt "${testPrompt}"`, { 
-      timeout: 10000,  // 10 second timeout for the test
+      timeout: 45000,  // 45 second timeout to allow CLI download on first run
       maxBuffer: 1024 * 1024 
     });
     

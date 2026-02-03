@@ -112,9 +112,12 @@ gh auth login
 
 **3. Enable GitHub Copilot CLI extension:**
 ```bash
-gh extension install github/gh-copilot
+# On newer GitHub CLI versions, copilot is built-in
+# On first use, it will auto-download the Copilot CLI (takes ~30 seconds)
 gh copilot --help  # Verify it works
 ```
+
+**Note:** The first time you use `gh copilot`, it downloads the Copilot CLI automatically. This may take 30-60 seconds. Subsequent calls will be faster.
 
 **4. Verify GitEase works:**
 ```bash

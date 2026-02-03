@@ -1,6 +1,6 @@
 {
   "name": "gitease-cli",
-  "version": "1.0.7",
+  "version": "1.0.9",
   "description": "Git commands in plain English, powered by GitHub Copilot AI",
   "main": "dist/index.js",
   "bin": {
