@@ -135,6 +135,11 @@ program
       
       if (!copilotAvailable) {
         printError(MESSAGES.copilotUnavailable);
+        console.log(chalk.yellow('\n📋 Setup steps:'));
+        console.log(chalk.gray('  1. Install GitHub CLI: brew install gh'));
+        console.log(chalk.gray('  2. Authenticate: gh auth login'));
+        console.log(chalk.gray('  3. Install Copilot: gh extension install github/gh-copilot'));
+        console.log(chalk.gray('  4. Verify: gh copilot --help'));
         console.log(chalk.yellow(`\n💡 ${MESSAGES.copilotLoginTip}`));
         process.exit(1);
       }
@@ -149,11 +154,19 @@ program
       suggestion = await getCopilotSuggestion(query);
       spinner.stop();
     } catch (error) {
-      printError('Failed to get suggestion from Copilot');
-      if (error instanceof Error) {
-        console.log(chalk.gray('   ' + error.message));
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      printError(errorMsg);
+      console.log(chalk.yellow('\n💡 Common fixes:'));
+      console.log(chalk.gray('  • Make sure you have an active GitHub Copilot subscription'));
+      console.log(chalk.gray('  • Try: gh auth refresh'));
+      console.log(chalk.gray('  • Or reinstall the extension: gh extension upgrade github/gh-copilot'));
+      console.log(chalk.gray('  • Check: gh copilot --help'));
+      
+      if (process.env.DEBUG) {
+        console.log(chalk.red('\n🐛 Error details:'));
+        console.log(chalk.red(errorMsg));
       }
-      return;
+      process.exit(1);
     }
 
     console.log(chalk.green('\n✨ Copilot suggests:\n'));

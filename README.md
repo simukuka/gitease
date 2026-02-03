@@ -4,7 +4,7 @@
 
 Transform complex Git operations into simple conversations. GitEase uses GitHub Copilot to translate your intentions into the right Git commands—no more Googling syntax or memorizing flags.
 
-[![npm version](https://img.shields.io/npm/v/gitease.svg)](https://www.npmjs.com/package/gitease)
+[![npm version](https://img.shields.io/npm/v/gitease-cli.svg)](https://www.npmjs.com/package/gitease-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Copilot CLI Challenge](https://img.shields.io/badge/GitHub-Copilot%20Challenge-blue)](https://dev.to/challenges/github-2026-01-21)
 
@@ -97,7 +97,63 @@ Before installing GitEase, you'll need:
   - ✅ Free trial available
   - 💰 $10/month for individuals
 
-### Quick Install
+### Installation Steps
+
+**1. Install the CLI:**
+```bash
+npm install -g gitease-cli
+```
+
+**2. Authenticate with GitHub:**
+```bash
+gh auth login
+# Follow the prompts to authenticate
+```
+
+**3. Enable GitHub Copilot CLI extension:**
+```bash
+gh extension install github/gh-copilot
+gh copilot --help  # Verify it works
+```
+
+**4. Verify GitEase works:**
+```bash
+cd /path/to/your/git/repo
+gitease "show recent commits"
+```
+
+---
+
+## ⚠️ Troubleshooting
+
+### GitEase command not found
+```bash
+# Make sure npm global bin is in PATH
+npm config get prefix
+# Add ~/.npm-global/bin to your PATH if needed
+```
+
+### "Copilot request timed out"
+- Make sure `gh copilot` CLI is installed:
+  ```bash
+  gh copilot --help
+  ```
+- If it's not working, reinstall:
+  ```bash
+  gh extension remove github/gh-copilot
+  gh extension install github/gh-copilot
+  ```
+
+### "GitHub Copilot not available"
+You need an active GitHub Copilot subscription to use GitEase:
+- ✅ **Free** for students and teachers
+- ✅ **Free trial** (2 months)
+- 💰 **$10/month** for individuals
+- Sign up at [github.com/features/copilot](https://github.com/features/copilot)
+
+---
+
+## 🚀 Quick Start
 ```bash
 # 1. Install GitEase globally
 npm install -g gitease

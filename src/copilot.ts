@@ -114,11 +114,21 @@ function parseCopilotOutput(output: string): CopilotSuggestion {
 }
 
 /**
- * Check if GitHub Copilot is available
+ * Check if GitHub Copilot is available AND can make API calls
  */
 export async function isCopilotAvailable(): Promise<boolean> {
   try {
+    // First check if command exists
     await execAsync('gh copilot --help');
+    
+    // Then try a simple actual call to verify it works
+    const testPrompt = 'Return just: "test"';
+    const { stdout } = await execAsync(`gh copilot --prompt "${testPrompt}"`, { 
+      timeout: 10000,  // 10 second timeout for the test
+      maxBuffer: 1024 * 1024 
+    });
+    
+    // If we get here, it works
     return true;
   } catch (error) {
     return false;
