@@ -41,6 +41,7 @@ function parseCopilotOutput(output: string): CopilotSuggestion {
   let explanation = '';
   let inCodeBlock = false;
   let explanationLines: string[] = [];
+  let foundCodeBlock = false;
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -48,6 +49,7 @@ function parseCopilotOutput(output: string): CopilotSuggestion {
     // Detect code block start
     if (line.includes('```bash') || line.includes('```sh') || line.includes('```')) {
       inCodeBlock = true;
+      foundCodeBlock = true;
       continue;
     }
     
@@ -79,28 +81,32 @@ function parseCopilotOutput(output: string): CopilotSuggestion {
       }
     }
     
-    // Collect explanation (text before code blocks)
-    if (!inCodeBlock && line.trim().length > 0 && !line.includes('```')) {
-      // Skip the statistics lines at the end
-      if (!line.includes('Total usage') && 
-          !line.includes('API time') && 
-          !line.includes('session time') &&
-          !line.includes('code changes') &&
-          !line.includes('Breakdown by') &&
-          !line.includes('claude-') &&
-          !line.includes('The last commit was:')) {
-        explanationLines.push(line.trim());
+    // Collect explanation (any text that's not a code block and not stats)
+    const trimmedLine = line.trim();
+    if (trimmedLine.length > 0 && !line.includes('```') && !line.includes('$')) {
+      // Skip statistics, metadata lines, and command repeats
+      if (!trimmedLine.includes('Total usage') && 
+          !trimmedLine.includes('API time') && 
+          !trimmedLine.includes('session time') &&
+          !trimmedLine.includes('code changes') &&
+          !trimmedLine.includes('Breakdown by') &&
+          !trimmedLine.includes('claude-') &&
+          !trimmedLine.includes('The last commit was:') &&
+          !trimmedLine.includes('Let me try a different approach:') &&
+          !trimmedLine.includes('You may need elevated permissions') &&
+          !trimmedLine.startsWith('```') &&
+          !trimmedLine.startsWith('git ')) {  // Skip lines that are just the command again
+        explanationLines.push(trimmedLine);
       }
     }
   }
   
-  // Join explanation lines
-  explanation = explanationLines.slice(0, 3).join(' '); // Take first 3 lines
-  
-  // Clean up explanation
-  explanation = explanation
-    .replace(/^Let me try a different approach:\s*/i, '')
-    .replace(/^You may need elevated permissions\.\s*/i, '')
+  // Join explanation lines - take first 5 lines for better context
+  explanation = explanationLines
+    .slice(0, 5)
+    .filter(line => line.length > 0)
+    .join(' ')
+    .replace(/\s+/g, ' ')  // Normalize whitespace
     .trim();
   
   if (!explanation) {

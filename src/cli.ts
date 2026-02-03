@@ -249,6 +249,8 @@ program
         status: 'success',
         reversalCommand: isReversible(command) ? 'git reflog' : undefined,
       });
+      
+      process.exit(0);
     } catch (error) {
       printError(MESSAGES.failed);
       if (error instanceof Error) {
