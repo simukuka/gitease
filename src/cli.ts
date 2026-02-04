@@ -48,7 +48,11 @@ async function showRiskPreview(command: string): Promise<void> {
     if (command.startsWith('git commit')) {
       const { stdout } = await execAsync('git diff --staged');
       if (stdout) {
-        console.log(chalk.gray(stdout.trim()));
+        const lines = stdout.trim().split('\n').slice(0, 15);  // Limit to 15 lines
+        console.log(chalk.gray(lines.join('\n')));
+        if (stdout.trim().split('\n').length > 15) {
+          console.log(chalk.gray('... (and more changes)'));
+        }
       } else {
         console.log(chalk.gray('(no staged changes)'));
       }
@@ -58,7 +62,11 @@ async function showRiskPreview(command: string): Promise<void> {
     if (command.startsWith('git add')) {
       const { stdout } = await execAsync('git diff');
       if (stdout) {
-        console.log(chalk.gray(stdout.trim()));
+        const lines = stdout.trim().split('\n').slice(0, 15);  // Limit to 15 lines
+        console.log(chalk.gray(lines.join('\n')));
+        if (stdout.trim().split('\n').length > 15) {
+          console.log(chalk.gray('... (and more changes)'));
+        }
       } else {
         console.log(chalk.gray('(no unstaged changes)'));
       }
@@ -68,11 +76,11 @@ async function showRiskPreview(command: string): Promise<void> {
     if (command.startsWith('git checkout') || command.startsWith('git reset') || command.startsWith('git clean')) {
       const status = await execAsync('git status -sb');
       if (status.stdout) {
-        console.log(chalk.gray(status.stdout.trim()));
-      }
-      const diff = await execAsync('git diff');
-      if (diff.stdout) {
-        console.log(chalk.gray(diff.stdout.trim()));
+        const lines = status.stdout.trim().split('\n').slice(0, 10);  // Limit to 10 lines
+        console.log(chalk.gray(lines.join('\n')));
+        if (status.stdout.trim().split('\n').length > 10) {
+          console.log(chalk.gray('... (and more)'));
+        }
       }
       return;
     }
