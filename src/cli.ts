@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { isGitRepository, getCurrentBranch, getRepoStatus, hasCommits, checkConflicts, abortMerge } from './git.js';
+import { isGitRepository, getCurrentBranch, getRepoStatus, hasCommits, checkConflicts, abortMerge, listLocalBranches, listRemoteBranches } from './git.js';
 import { getCopilotSuggestion, isCopilotAvailable, isWorkflowQuery, getCopilotWorkflow } from './copilot.js';
 import { analyzeCommand, isReversible } from './safety.js';
 import { addLedgerEntry, getLedger, getLastCommand } from './ledger.js';
@@ -408,6 +408,54 @@ program
       
       process.exit(0);
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+
+      // Smart recovery: branch not found on checkout/switch
+      if (/^git\s+(checkout|switch)/.test(command) && /pathspec.*did not match|invalid reference/.test(errMsg)) {
+        const branchMatch = command.match(/(?:checkout|switch)\s+(?:-b\s+)?([^\s]+)/);
+        const targetBranch = branchMatch ? branchMatch[1] : null;
+
+        if (targetBranch) {
+          console.log(chalk.yellow(`\n⚠️  Branch "${targetBranch}" doesn't exist locally.`));
+
+          // Check remote
+          const remoteBranches = await listRemoteBranches();
+          if (remoteBranches.includes(targetBranch)) {
+            console.log(chalk.green(`   ✓ Found "${targetBranch}" on remote.`));
+            const trackRemote = await promptYesNo(chalk.yellow(`   Create local branch tracking origin/${targetBranch}? (y/N): `));
+            if (trackRemote) {
+              try {
+                const { stdout: out } = await execAsync(`git checkout -b ${targetBranch} origin/${targetBranch}`);
+                if (out) console.log(chalk.gray(out.trim()));
+                printSuccess(`Switched to new branch '${targetBranch}' tracking remote.`);
+                addLedgerEntry({ description: query, command: `git checkout -b ${targetBranch} origin/${targetBranch}`, status: 'success' });
+                process.exit(0);
+              } catch (e2) {
+                printError('Failed to track remote branch.');
+                if (e2 instanceof Error) console.log(chalk.gray('   ' + e2.message));
+              }
+            }
+          } else {
+            // Offer to create a new branch
+            const localBranches = await listLocalBranches();
+            console.log(chalk.gray(`   Local branches: ${localBranches.join(', ')}\n`));
+            const createNew = await promptYesNo(chalk.yellow(`   Create new branch "${targetBranch}"? (y/N): `));
+            if (createNew) {
+              try {
+                const { stdout: out } = await execAsync(`git checkout -b ${targetBranch}`);
+                if (out) console.log(chalk.gray(out.trim()));
+                printSuccess(`Created and switched to new branch '${targetBranch}'.`);
+                addLedgerEntry({ description: query, command: `git checkout -b ${targetBranch}`, status: 'success' });
+                process.exit(0);
+              } catch (e2) {
+                printError('Failed to create branch.');
+                if (e2 instanceof Error) console.log(chalk.gray('   ' + e2.message));
+              }
+            }
+          }
+        }
+      }
+
       printError(MESSAGES.failed);
       if (error instanceof Error) {
         console.log(chalk.gray('   ' + error.message));

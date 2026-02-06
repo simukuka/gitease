@@ -14,9 +14,10 @@ Transform complex Git operations into simple conversations. GitEase uses GitHub 
 
 - 🤖 **AI-Powered**: Leverages GitHub Copilot CLI for intelligent command suggestions
 - 🎯 **Natural Language**: Describe what you want in plain English—no syntax required
-- � **Multi-Step Workflows**: Chain operations like "pull and merge" or "commit and push" — executed sequentially with live status
+- 🔄 **Multi-Step Workflows**: Chain operations like "pull and merge" or "commit and push" — executed sequentially with live status
 - ⚡ **Conflict Detection**: Automatically detects merge conflicts and offers to abort or guide you through resolution
-- �🛡️ **Safety-First**: Preview commands and see warnings before execution
+- 🧠 **Smart Recovery**: If a branch doesn't exist, offers to track from remote or create it — no dead-end errors
+- 🛡️ **Safety-First**: Preview commands and see warnings before execution
 - 📊 **Smart Context**: Shows diffs, status, and logs for dangerous operations
 - ⏮️ **Undo History**: Track every action and reverse mistakes
 - 🎨 **Beautiful UI**: Clean, colored terminal output with progress indicators
@@ -52,24 +53,37 @@ $ gitease "undo my last commit but keep the changes"
 ```bash
 $ gitease "undo my last commit but keep the changes"
 
-🔍 Checking Git repository...
-✅ Git repository detected (branch: main)
+Git repository detected (branch: main)
 
-🤖 Checking GitHub Copilot...
 ✅ GitHub Copilot available
-
-💭 Asking Copilot for suggestions...
 
 ✨ Copilot suggests:
 
-  git reset --soft HEAD~1
+  $ git reset --soft HEAD~1
+   This will undo your last commit while keeping changes staged
 
-  This will undo your last commit while keeping changes staged
+⚠️  WARNING  This command can modify commit history
 
-⚠️  DANGER: This command can modify commit history
-📋 Preview: Last commit will be: "feat: add user authentication"
+Run this command? (y/N): y
 
-Execute this command? (y/N):
+▶ Executing...
+✅ Done.
+```
+
+### Smart Branch Recovery
+```bash
+$ gitease "move to main"
+
+✨ Copilot suggests:
+  $ git checkout main
+
+Run this command? (y/N): y
+
+▶ Executing...
+⚠️  Branch "main" doesn't exist locally.
+   ✓ Found "main" on remote.
+   Create local branch tracking origin/main? (y/N): y
+✅ Switched to new branch 'main' tracking remote.
 ```
 
 ---
@@ -401,7 +415,7 @@ Want to contribute or customize GitEase? Here's how to get started.
 ### Clone & Setup
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/gitease.git
+git clone https://github.com/simukuka/gitease.git
 cd gitease
 
 # Install dependencies
@@ -484,49 +498,6 @@ DEBUG=1 gitease "your query"
 
 ---
 
-## 🆘 Troubleshooting
-
-### "gh: command not found"
-**Solution:** Install GitHub CLI from https://cli.github.com/
-
-### "This action requires authentication"
-**Solution:** Run `gh auth login` to authenticate with GitHub
-
-### "Copilot not available" or "model not enabled"
-**Solution:** 
-- Make sure you have a Copilot subscription
-- Try: `gh copilot --help` to verify it works
-- Some users may need: `gh copilot --model claude-sonnet-4.5` once
-
-### "Not a Git repository"
-**Solution:** Navigate to a Git repository first:
-```bash
-cd ~/projects/my-app
-gitease "your query"
-```
-
-### "gitease: command not found"
-**Solution:** The npm global install didn't add to PATH. Try:
-```bash
-npm install -g gitease --force
-```
-
-Or check your npm global bin path:
-```bash
-npm config get prefix
-# Add this path to your $PATH environment variable
-```
-
-### Commands not parsing correctly
-**Solution:** Run in debug mode to see what's happening:
-```bash
-DEBUG=1 gitease "your query"
-```
-
-Send the output when reporting issues.
-
----
-
 ## 🤝 Contributing
 
 Contributions are welcome! Whether it's bug fixes, new features, or documentation improvements.
@@ -575,7 +546,7 @@ Contributions are welcome! Whether it's bug fixes, new features, or documentatio
 
 ## 📝 License
 
-MIT © [Your Name]
+MIT © [simukuka](https://github.com/simukuka)
 
 See [LICENSE](LICENSE) file for details.
 
@@ -614,6 +585,6 @@ Found a bug or have a suggestion?
 
 ⭐ Star this repo if GitEase helps you!
 
-[Report Bug](https://github.com/yourusername/gitease/issues) · [Request Feature](https://github.com/yourusername/gitease/issues) · [Contribute](https://github.com/yourusername/gitease/pulls)
+[Report Bug](https://github.com/simukuka/gitease/issues) · [Request Feature](https://github.com/simukuka/gitease/issues) · [Contribute](https://github.com/simukuka/gitease/pulls)
 
 </div>

@@ -114,3 +114,31 @@ export async function isMergeInProgress(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * List all local branch names
+ */
+export async function listLocalBranches(): Promise<string[]> {
+  const git: SimpleGit = simpleGit();
+
+  try {
+    const summary = await git.branchLocal();
+    return summary.all;
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
+ * List remote branch names (without the remote/ prefix)
+ */
+export async function listRemoteBranches(): Promise<string[]> {
+  const git: SimpleGit = simpleGit();
+
+  try {
+    const summary = await git.branch(['-r']);
+    return summary.all.map(b => b.replace(/^origin\//, ''));
+  } catch (error) {
+    return [];
+  }
+}
