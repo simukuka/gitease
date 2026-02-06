@@ -83,21 +83,18 @@ function parseCopilotOutput(output: string): CopilotSuggestion {
     
     // Collect explanation (any text that's not a code block and not stats)
     const trimmedLine = line.trim();
-    if (trimmedLine.length > 0 && !line.includes('```') && !line.includes('$')) {
-      // Skip statistics, metadata lines, and command repeats
-      if (!trimmedLine.includes('Total usage') && 
-          !trimmedLine.includes('API time') && 
-          !trimmedLine.includes('session time') &&
-          !trimmedLine.includes('code changes') &&
-          !trimmedLine.includes('Breakdown by') &&
-          !trimmedLine.includes('claude-') &&
-          !trimmedLine.includes('The last commit was:') &&
-          !trimmedLine.includes('Let me try a different approach:') &&
-          !trimmedLine.includes('You may need elevated permissions') &&
-          !trimmedLine.startsWith('```') &&
-          !trimmedLine.startsWith('git ')) {  // Skip lines that are just the command again
-        explanationLines.push(trimmedLine);
-      }
+    if (trimmedLine.length > 0 && !line.includes('```') && !line.includes('$') && (!trimmedLine.includes('Total usage') && 
+              !trimmedLine.includes('API time') && 
+              !trimmedLine.includes('session time') &&
+              !trimmedLine.includes('code changes') &&
+              !trimmedLine.includes('Breakdown by') &&
+              !trimmedLine.includes('claude-') &&
+              !trimmedLine.includes('The last commit was:') &&
+              !trimmedLine.includes('Let me try a different approach:') &&
+              !trimmedLine.includes('You may need elevated permissions') &&
+              !trimmedLine.startsWith('```') &&
+              !trimmedLine.startsWith('git '))) {
+          explanationLines.push(trimmedLine);
     }
   }
   
