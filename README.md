@@ -14,7 +14,9 @@ Transform complex Git operations into simple conversations. GitEase uses GitHub 
 
 - 🤖 **AI-Powered**: Leverages GitHub Copilot CLI for intelligent command suggestions
 - 🎯 **Natural Language**: Describe what you want in plain English—no syntax required
-- 🛡️ **Safety-First**: Preview commands and see warnings before execution
+- � **Multi-Step Workflows**: Chain operations like "pull and merge" or "commit and push" — executed sequentially with live status
+- ⚡ **Conflict Detection**: Automatically detects merge conflicts and offers to abort or guide you through resolution
+- �🛡️ **Safety-First**: Preview commands and see warnings before execution
 - 📊 **Smart Context**: Shows diffs, status, and logs for dangerous operations
 - ⏮️ **Undo History**: Track every action and reverse mistakes
 - 🎨 **Beautiful UI**: Clean, colored terminal output with progress indicators
@@ -206,6 +208,54 @@ gitease "interactive rebase last 5 commits"
 gitease "squash last 3 commits"
 ```
 
+### Multi-Step Workflows
+
+GitEase automatically detects compound requests and runs them as a coordinated pipeline:
+
+```bash
+# Pull & merge in one go
+gitease "pull from origin and merge main"
+
+# Stage, commit, and push
+gitease "stage everything, commit with message 'fix: resolve auth bug', and push"
+
+# Sync your branch with remote
+gitease "fetch and rebase onto main"
+
+# Save and push work
+gitease "commit all changes then push to origin"
+```
+
+**Workflow output:**
+```
+🔄 Multi-step workflow detected
+
+📋 Workflow Plan (3 steps):
+
+  1. git add -A
+     Stage all changes
+  2. git commit -m "fix: resolve auth bug"
+     Commit staged changes
+  3. git push origin main
+     Push commits to remote
+
+Run this workflow? (y/N): y
+
+▶ Running workflow...
+
+[1/3] ✓ git add -A
+[2/3] ✓ git commit -m "fix: resolve auth bug"
+[3/3] ✓ git push origin main
+
+✅ Workflow completed successfully!
+```
+
+**Conflict handling:**
+If a merge or pull causes conflicts, GitEase will:
+- Show you exactly which files have conflicts
+- Offer to abort the merge
+- Or guide you through manual resolution
+
 ### Built-in Commands
 ```bash
 # Check detailed repository status
@@ -229,6 +279,7 @@ gitease --version
 ┌─────────────────────────────────┐
 │  You type plain English         │
 │  "undo my last commit"          │
+│  "pull and merge main"          │
 └────────────┬────────────────────┘
              ↓
 ┌─────────────────────────────────┐
@@ -239,8 +290,14 @@ gitease --version
 └────────────┬────────────────────┘
              ↓
 ┌─────────────────────────────────┐
+│  Workflow detection:            │
+│  Single command? → one-shot     │
+│  Multi-step? → workflow plan    │
+└────────────┬────────────────────┘
+             ↓
+┌─────────────────────────────────┐
 │  GitHub Copilot analyzes        │
-│  Suggests best Git command      │
+│  Suggests command(s)            │
 └────────────┬────────────────────┘
              ↓
 ┌─────────────────────────────────┐
@@ -255,7 +312,8 @@ gitease --version
 └────────────┬────────────────────┘
              ↓
 ┌─────────────────────────────────┐
-│  Command executes               │
+│  Executes sequentially          │
+│  Detects conflicts (if any)     │
 │  Action saved to history        │
 │  Success confirmation shown     │
 └─────────────────────────────────┘
@@ -510,6 +568,8 @@ Contributions are welcome! Whether it's bug fixes, new features, or documentatio
 - 🔌 Plugin system for custom commands
 - 📖 More comprehensive documentation
 - 🧪 Automated testing suite
+- 🔀 Interactive conflict resolution UI
+- 📋 Custom workflow templates
 
 ---
 

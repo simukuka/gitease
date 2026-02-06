@@ -1,4 +1,5 @@
 import simpleGit, { SimpleGit } from 'simple-git';
+import { ConflictInfo } from './types.js';
 
 /**
  * Check if the current directory is inside a Git repository
@@ -62,6 +63,53 @@ export async function hasCommits(): Promise<boolean> {
   try {
     await git.revparse(['HEAD']);
     return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Check if the working tree has merge conflicts
+ */
+export async function checkConflicts(): Promise<ConflictInfo> {
+  const git: SimpleGit = simpleGit();
+
+  try {
+    const status = await git.status();
+    const conflictFiles = status.conflicted || [];
+    return {
+      hasConflicts: conflictFiles.length > 0,
+      conflictFiles,
+    };
+  } catch (error) {
+    return { hasConflicts: false, conflictFiles: [] };
+  }
+}
+
+/**
+ * Abort an in-progress merge
+ */
+export async function abortMerge(): Promise<boolean> {
+  const git: SimpleGit = simpleGit();
+
+  try {
+    await git.merge(['--abort']);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Check if a merge/rebase is in progress
+ */
+export async function isMergeInProgress(): Promise<boolean> {
+  const git: SimpleGit = simpleGit();
+
+  try {
+    const status = await git.status();
+    // simple-git doesn't expose MERGE_HEAD directly, but conflicted files indicate it
+    return (status.conflicted && status.conflicted.length > 0);
   } catch (error) {
     return false;
   }

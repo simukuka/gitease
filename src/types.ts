@@ -26,6 +26,35 @@ export interface SafetyAnalysis {
 }
 
 /**
+ * A single step in a multi-command workflow
+ */
+export interface WorkflowStep {
+  command: string;
+  explanation: string;
+  status: 'pending' | 'running' | 'success' | 'failed' | 'skipped';
+  output?: string;
+  error?: string;
+}
+
+/**
+ * A workflow is an ordered list of git commands that accomplish a compound task
+ */
+export interface Workflow {
+  steps: WorkflowStep[];
+  description: string;
+  /** Whether to stop on first failure or continue */
+  stopOnFailure: boolean;
+}
+
+/**
+ * Result of a conflict check
+ */
+export interface ConflictInfo {
+  hasConflicts: boolean;
+  conflictFiles: string[];
+}
+
+/**
  * Entry in the undo ledger
  */
 export interface LedgerEntry {

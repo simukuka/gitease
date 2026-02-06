@@ -1,7 +1,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { CopilotSuggestion } from './types.js';
-import { COPILOT_PROMPT_CONSTRAINTS } from './constants.js';
+import { CopilotSuggestion, Workflow, WorkflowStep } from './types.js';
+import { COPILOT_PROMPT_CONSTRAINTS, COPILOT_WORKFLOW_PROMPT_CONSTRAINTS, WORKFLOW_PATTERNS } from './constants.js';
 
 const execAsync = promisify(exec);
 
@@ -137,4 +137,130 @@ export async function isCopilotAvailable(): Promise<boolean> {
   } catch (error) {
     return false;
   }
+}
+
+/**
+ * Detect if a query implies a multi-step workflow
+ */
+export function isWorkflowQuery(query: string): boolean {
+  return WORKFLOW_PATTERNS.some(pattern => pattern.test(query));
+}
+
+/**
+ * Get a multi-step workflow suggestion from GitHub Copilot
+ */
+export async function getCopilotWorkflow(query: string): Promise<Workflow> {
+  try {
+    const prompt = [
+      ...COPILOT_WORKFLOW_PROMPT_CONSTRAINTS,
+      `User request: ${query}`,
+    ].join('\n');
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Copilot request timed out after 60 seconds.')), 60000)
+    );
+
+    const execPromise = execAsync(`gh copilot --prompt "${prompt}"`, { maxBuffer: 10 * 1024 * 1024 });
+    const { stdout } = await Promise.race([execPromise, timeoutPromise]);
+
+    const workflow = parseWorkflowOutput(stdout, query);
+    if (workflow.steps.length === 0) {
+      throw new Error('Copilot did not return any workflow steps');
+    }
+
+    return workflow;
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to get Copilot workflow: ${errorMsg}`);
+  }
+}
+
+/**
+ * Parse Copilot output into a multi-step workflow
+ */
+function parseWorkflowOutput(output: string, description: string): Workflow {
+  const lines = output.split('\n');
+  const steps: WorkflowStep[] = [];
+  let inCodeBlock = false;
+  const explanationLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Detect code block boundaries
+    if (trimmed.startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+
+    if (inCodeBlock && trimmed.length > 0) {
+      // Strip leading step numbers like "1. ", "2) ", "- "
+      let cmd = trimmed
+        .replace(/^\d+[\.\)]\s*/, '')
+        .replace(/^-\s+/, '')
+        .replace(/^sudo\s+/, '')
+        .trim();
+
+      // Only accept git commands
+      if (cmd.startsWith('git ')) {
+        steps.push({
+          command: cmd,
+          explanation: '',
+          status: 'pending',
+        });
+      }
+    } else if (!inCodeBlock && trimmed.length > 0) {
+      // Collect explanation text (skip noise)
+      const noise = [
+        'Total usage', 'API time', 'session time', 'code changes',
+        'Breakdown by', 'claude-', 'The last commit was',
+      ];
+      if (!noise.some(n => trimmed.includes(n)) && !trimmed.startsWith('```')) {
+        explanationLines.push(trimmed);
+      }
+    }
+  }
+
+  // Try to match explanation lines to steps (e.g. "1. fetches..." → step 0)
+  for (const expLine of explanationLines) {
+    const match = expLine.match(/^(\d+)[\.\)]\s*(.+)/);
+    if (match) {
+      const idx = parseInt(match[1], 10) - 1;
+      if (idx >= 0 && idx < steps.length) {
+        steps[idx].explanation = match[2].trim();
+      }
+    }
+  }
+
+  // Fill in any missing explanations
+  for (const step of steps) {
+    if (!step.explanation) {
+      step.explanation = describeGitCommand(step.command);
+    }
+  }
+
+  return {
+    steps,
+    description,
+    stopOnFailure: true,
+  };
+}
+
+/**
+ * Simple fallback description for a git command
+ */
+function describeGitCommand(cmd: string): string {
+  if (cmd.startsWith('git fetch')) return 'Fetch latest changes from remote';
+  if (cmd.startsWith('git pull')) return 'Pull and integrate remote changes';
+  if (cmd.startsWith('git merge')) return 'Merge branches together';
+  if (cmd.startsWith('git rebase')) return 'Rebase current branch';
+  if (cmd.startsWith('git add')) return 'Stage changes';
+  if (cmd.startsWith('git commit')) return 'Commit staged changes';
+  if (cmd.startsWith('git push')) return 'Push commits to remote';
+  if (cmd.startsWith('git checkout')) return 'Switch branches/restore files';
+  if (cmd.startsWith('git stash')) return 'Stash working changes';
+  if (cmd.startsWith('git branch')) return 'Manage branches';
+  if (cmd.startsWith('git reset')) return 'Reset changes';
+  if (cmd.startsWith('git log')) return 'Show commit history';
+  return 'Execute git operation';
 }

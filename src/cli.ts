@@ -4,13 +4,13 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { isGitRepository, getCurrentBranch, getRepoStatus, hasCommits } from './git.js';
-import { getCopilotSuggestion, isCopilotAvailable } from './copilot.js';
+import { isGitRepository, getCurrentBranch, getRepoStatus, hasCommits, checkConflicts, abortMerge } from './git.js';
+import { getCopilotSuggestion, isCopilotAvailable, isWorkflowQuery, getCopilotWorkflow } from './copilot.js';
 import { analyzeCommand, isReversible } from './safety.js';
 import { addLedgerEntry, getLedger, getLastCommand } from './ledger.js';
 import { MESSAGES } from './constants.js';
-import { RiskLevel, CopilotSuggestion } from './types.js';
-import { printSuccess, printError, printWarning, printCommand, printRiskBadge, Spinner } from './ui.js';
+import { RiskLevel, CopilotSuggestion, Workflow, WorkflowStep } from './types.js';
+import { printSuccess, printError, printWarning, printCommand, printRiskBadge, Spinner, printWorkflowPlan, printStepStatus, printConflicts } from './ui.js';
 
 const program = new Command();
 const execAsync = promisify(exec);
@@ -97,6 +97,148 @@ async function showRiskPreview(command: string): Promise<void> {
   }
 }
 
+/**
+ * Handle a multi-step workflow query — plan, confirm, execute steps sequentially
+ */
+async function handleWorkflow(query: string): Promise<void> {
+  console.log(chalk.bold.magenta(`\n🔄 ${MESSAGES.workflowDetected}\n`));
+
+  let workflow: Workflow;
+  try {
+    const spinner = new Spinner(MESSAGES.workflowSuggesting);
+    spinner.start();
+    workflow = await getCopilotWorkflow(query);
+    spinner.stop();
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    printError(errorMsg);
+    process.exit(1);
+  }
+
+  // Show the plan
+  printWorkflowPlan(workflow.steps);
+
+  // Safety check — flag any dangerous steps
+  for (const step of workflow.steps) {
+    const safety = analyzeCommand(step.command);
+    if (safety.riskLevel === RiskLevel.Dangerous) {
+      console.log(
+        printRiskBadge('dangerous') +
+        chalk.yellow(` Step "${step.command}" — ${safety.message}`)
+      );
+    }
+  }
+
+  // Confirm
+  const shouldRun = await promptYesNo(chalk.yellow(MESSAGES.workflowConfirm));
+  if (!shouldRun) {
+    console.log(chalk.gray(MESSAGES.cancelled));
+    return;
+  }
+
+  console.log(chalk.blue(`\n▶ ${MESSAGES.workflowRunning}\n`));
+
+  // Execute steps sequentially
+  let completedSteps = 0;
+  for (let i = 0; i < workflow.steps.length; i++) {
+    const step = workflow.steps[i];
+    step.status = 'running';
+    printStepStatus(i, workflow.steps.length, step);
+
+    try {
+      const { stdout, stderr } = await execAsync(step.command);
+      step.status = 'success';
+      step.output = [stdout, stderr].filter(Boolean).join('\n').trim();
+      printStepStatus(i, workflow.steps.length, step);
+      completedSteps++;
+
+      // After merge/pull/rebase, check for conflicts
+      if (/^git\s+(merge|pull|rebase)/.test(step.command)) {
+        const conflictInfo = await checkConflicts();
+        if (conflictInfo.hasConflicts) {
+          printConflicts(conflictInfo.conflictFiles);
+
+          // Offer to abort the merge
+          const shouldAbort = await promptYesNo(chalk.yellow(MESSAGES.conflictAbort));
+          if (shouldAbort) {
+            await abortMerge();
+            printWarning('Merge aborted.');
+            // Mark remaining steps as skipped
+            for (let j = i + 1; j < workflow.steps.length; j++) {
+              workflow.steps[j].status = 'skipped';
+              printStepStatus(j, workflow.steps.length, workflow.steps[j]);
+            }
+            break;
+          }
+
+          // Otherwise, tell the user how to continue
+          console.log(chalk.yellow(`\n💡 ${MESSAGES.conflictContinue}`));
+          // Mark remaining steps as skipped since user needs to resolve manually
+          for (let j = i + 1; j < workflow.steps.length; j++) {
+            workflow.steps[j].status = 'skipped';
+            printStepStatus(j, workflow.steps.length, workflow.steps[j]);
+          }
+          break;
+        }
+      }
+
+      // Log each step to ledger
+      addLedgerEntry({
+        description: `[workflow ${i + 1}/${workflow.steps.length}] ${query}`,
+        command: step.command,
+        status: 'success',
+        reversalCommand: isReversible(step.command) ? 'git reflog' : undefined,
+      });
+    } catch (error) {
+      step.status = 'failed';
+      step.error = error instanceof Error ? error.message : String(error);
+      printStepStatus(i, workflow.steps.length, step);
+
+      addLedgerEntry({
+        description: `[workflow ${i + 1}/${workflow.steps.length}] ${query}`,
+        command: step.command,
+        status: 'failed',
+      });
+
+      // After a failed merge/pull, check for conflicts specifically
+      if (/^git\s+(merge|pull|rebase)/.test(step.command)) {
+        const conflictInfo = await checkConflicts();
+        if (conflictInfo.hasConflicts) {
+          printConflicts(conflictInfo.conflictFiles);
+          const shouldAbort = await promptYesNo(chalk.yellow(MESSAGES.conflictAbort));
+          if (shouldAbort) {
+            await abortMerge();
+            printWarning('Merge aborted.');
+          } else {
+            console.log(chalk.yellow(`\n💡 ${MESSAGES.conflictContinue}`));
+          }
+        }
+      }
+
+      if (workflow.stopOnFailure) {
+        // Skip remaining steps
+        for (let j = i + 1; j < workflow.steps.length; j++) {
+          workflow.steps[j].status = 'skipped';
+          printStepStatus(j, workflow.steps.length, workflow.steps[j]);
+        }
+        break;
+      }
+    }
+  }
+
+  // Summary
+  console.log();
+  if (completedSteps === workflow.steps.length) {
+    printSuccess(MESSAGES.workflowComplete);
+  } else if (completedSteps > 0) {
+    printWarning(`${MESSAGES.workflowPartial} (${completedSteps}/${workflow.steps.length} steps succeeded)`);
+  } else {
+    printError(MESSAGES.workflowFailed);
+  }
+
+  process.exit(completedSteps === workflow.steps.length ? 0 : 1);
+}
+
 program
   .name('gitease')
   .description('Git commands in plain English using AI')
@@ -153,6 +295,12 @@ program
       }
       
       printSuccess(MESSAGES.available);
+
+    // Detect multi-step workflow queries
+    if (isWorkflowQuery(query)) {
+      await handleWorkflow(query);
+      return;
+    }
 
     // Get suggestion from Copilot
     let suggestion: CopilotSuggestion;
