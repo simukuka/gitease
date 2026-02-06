@@ -12,6 +12,11 @@ import { MESSAGES } from './constants.js';
 import { RiskLevel, CopilotSuggestion, Workflow, WorkflowStep } from './types.js';
 import { printSuccess, printError, printWarning, printCommand, printRiskBadge, Spinner, printWorkflowPlan, printStepStatus, printConflicts } from './ui.js';
 
+import * as fs from 'fs';
+import * as path from 'path';
+
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+
 const program = new Command();
 const execAsync = promisify(exec);
 
@@ -242,7 +247,7 @@ async function handleWorkflow(query: string): Promise<void> {
 program
   .name('gitease')
   .description('Git commands in plain English using AI')
-  .version('0.1.0');
+  .version(pkg.version);
 
 program
   .argument('[query]', 'What you want to do in plain English')
